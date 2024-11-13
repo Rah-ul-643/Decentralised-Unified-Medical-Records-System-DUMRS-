@@ -11,6 +11,7 @@ import {
   Filler,
   Legend,
 } from 'chart.js';
+
 const baseUrl = process.env.REACT_APP_API;
 
 ChartJS.register(
@@ -31,16 +32,21 @@ export function Graph(props) {
   useEffect(() => {
     const fetchBloodPressureData = async () => {
       try {
-        const response = await fetch(baseUrl+`/patient/records/bloodPressure/${id}`,{
-          method:'GET',
-          credentials:'include'
+        const response = await fetch(baseUrl + `/patient/records/bloodPressure/${id}`, {
+          method: 'GET',
+          credentials: 'include'
         });
         const data = await response.json();
-        // Format the data for display
+        
+        // Format the dates
         const formattedData = data.map(item => ({
-          x: new Date(item.x).toLocaleDateString('default', { month: 'short', year: '2-digit' }),
+          x: new Date(item.x).toLocaleDateString('default', { 
+            month: 'short',
+            year: 'numeric'
+          }),
           y: item.y
         }));
+        
         setBloodPressureData(formattedData);
       } catch (error) {
         console.error('Error fetching blood pressure data:', error);
@@ -50,11 +56,8 @@ export function Graph(props) {
     fetchBloodPressureData();
   }, [id]);
 
-  // Calculate dynamic min and max values for y-axis
-  const yMin = bloodPressureData.length ? 
-    Math.floor(Math.min(...bloodPressureData.map(d => d.y)) / 10) * 10 - 10 : 60;
-  const yMax = bloodPressureData.length ? 
-    Math.ceil(Math.max(...bloodPressureData.map(d => d.y)) / 10) * 10 + 10 : 190;
+  // Only render the chart if we have data
+  if (!bloodPressureData.length) return <div>Loading...</div>;
 
   const data = {
     labels: bloodPressureData.map(d => d.x),
@@ -66,11 +69,11 @@ export function Graph(props) {
         backgroundColor: 'rgba(138, 43, 226, 0.1)',
         fill: true,
         tension: 0.4,
-        pointRadius: 3,
+        pointRadius: 5,
         pointBackgroundColor: 'rgba(138, 43, 226, 1)',
         pointBorderColor: 'white',
-        pointBorderWidth: 1,
-        pointHoverRadius: 9,
+        pointBorderWidth: 2,
+        pointHoverRadius: 8,
         pointHoverBackgroundColor: 'rgba(138, 43, 226, 1)',
         pointHoverBorderColor: 'white',
         pointHoverBorderWidth: 2,
@@ -80,6 +83,7 @@ export function Graph(props) {
 
   const options = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         display: false,
@@ -93,54 +97,49 @@ export function Graph(props) {
         padding: 10,
         displayColors: false,
         callbacks: {
-
           title: (context) => `Date: ${context[0].label}`,
-
-          label: (context) => `Blood Pressure: ${context.parsed.y.toFixed(0)} mmHg`,
+          label: (context) => `Blood Pressure: ${context.parsed.y} mmHg`,
         },
       },
     },
     scales: {
       x: {
-        type: 'linear',
+        type: 'category',
         grid: {
           display: false,
         },
         ticks: {
           font: {
-            size: 10,
+            size: 12,
           },
           maxRotation: 45,
-          autoSkip: true,
-          maxTicksLimit: 12,
+          autoSkip: false
         },
       },
       y: {
-        beginAtZero: false,
-        min: yMin,
-        max: yMax,
+        min: 80,  // Set minimum value slightly below lowest BP
+        max: 140, // Set maximum value slightly above highest BP
         grid: {
-          color: 'rgba(0, 0, 0, 0.05)',
+          color: 'rgba(0, 0, 0, 0.1)',
         },
         ticks: {
           font: {
-            size: 10,
+            size: 12,
           },
           stepSize: 10,
+          callback: function(value) {
+            return value + ' mmHg';
+          }
         },
-      },
-    },
-    elements: {
-      line: {
-        cubicInterpolationMode: 'monotone',
       },
     },
   };
 
   return (
-    <div style={{ width: '100%' }}>
-      
-      <Line options={options} data={data} />
+    <div style={{ width: '100%', height: '400px' }}>
+      <div style={{ width: '100%', height: '350px' }}>
+        <Line options={options} data={data} />
+      </div>
     </div>
   );
 }
